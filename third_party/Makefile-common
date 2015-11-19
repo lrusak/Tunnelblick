@@ -81,8 +81,8 @@ DOWN_ROOT_ARCH_2_2=$(foreach f, $(TARGET_ARCHS_2_2), -arch $f)
 
 all: built-easy-rsa-tunnelblick \
     built-tuntap                \
-    built-sparkle               \
-    built-openvpn
+    built-openvpn               \
+    built-sparkle
 	if [ "$${CONFIGURATION}" != "Debug" ]; then \
 		rm -f -R $(TOPDIR)/$(BUILD_NAME) ; \
 	fi
@@ -236,14 +236,14 @@ built-lzo:
 	ranlib $(LZO_STAGING_DIR)/lib/liblzo2.a
 	touch built-lzo
 	@echo "THIRD_PARTY: Built LZO"
-	
+
 built-lzo-clean:
 	@echo "THIRD_PARTY: Cleaning LZO..."
 	rm -f -R $(LZO_BUILD_DIR)
 	rm -f -R $(LZO_STAGING_DIR)
 	rm -f built-lzo
 	@echo "THIRD_PARTY: Cleaned LZO"
-	
+
 #######################################################################################
 # OPENVPN
 #######################################################################################
@@ -290,7 +290,7 @@ built-openvpn-prepare:
 	done
 	touch built-openvpn-prepare
 	@echo "THIRD_PARTY: Expanded and Patched OpenVPN"
-	
+
 built-openvpn: built-openvpn-prepare built-lzo built-pkcs11-helper built-openssl
 	@echo "THIRD_PARTY: Building OpenVPN..."
 	cd $(OPENVPN_BUILD_DIR) ; \
@@ -511,6 +511,18 @@ built-sparkle-prepare:
 	else \
 		echo "No Sparkle patches" ; \
 	fi
+	mkdir -p "$(SPARKLE_BUILD_DIR)/Extras/Source Code/openssl-headers"
+	for a in $(OPENSSL_TARGET_ARCHS); do\
+		for file in $(OPENSSL_STAGING_DIR)/$$a/include/openssl/*; do\
+			file_name="$$(basename "$${file}")" ; \
+			ln -s $$file "$(SPARKLE_BUILD_DIR)/Extras/Source Code/openssl-headers/$${a}_$${file_name}" ; \
+		done; \
+		for header in evp bio pem rsa sha; do\
+			sed -i '' -e "s|<openssl/$${header}.h>|\"openssl-headers/$${a}_$${header}.h\"|g" "$(SPARKLE_BUILD_DIR)/Extras/Source Code/SUDSAVerifier.m" ; \
+		done; \
+		sed -i '' -e "s|@OPENSSL_STAGING_DIR@|$(OPENSSL_STAGING_DIR)|g" \
+			  -e "s|@OPENSSL_TARGET_ARCH@|$${a}|g" "$(SPARKLE_BUILD_DIR)/Extras/Source Code/Sparkle.xcodeproj/project.pbxproj" ; \
+	done
 	touch built-sparkle-prepare
 	@echo "THIRD_PARTY: Patched Sparkle.framework"
 
